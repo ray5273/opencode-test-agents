@@ -1,0 +1,117 @@
+# 완전한 plan.yaml 예시
+# 이 파일을 그대로 복사해서 값만 도메인에 맞게 바꾸는 식으로 사용하세요.
+# Planner는 처음부터 새로 쓰지 말고 이 구조를 그대로 따라야 합니다.
+
+experiment:
+  id: 2026-04-30_spdk-zerocopy-qd-sweep_001
+  hypothesis: "zerocopy 패치는 queue depth 16 이상에서 randread 처리량을 10% 이상 개선한다"
+  description: "SPDK NVMe-oF target에 zerocopy 최적화 패치를 적용하고, queue depth를 1/4/16/64로 변경하며 randread 처리량과 p99 latency를 측정한다. 각 조건당 5회 반복."
+
+success_criteria: "queue_depth 16 이상에서 baseline 대비 iops 평균이 10% 이상 증가하고 lat_us_p99가 10% 이상 악화되지 않는다."
+
+target:
+  repo_path: /home/user/spdk
+  commit: a1b2c3d4e5f67890
+  patches:
+    - patches/zerocopy.patch
+  build_command: "./configure --with-nvme-cuse && make -j$(nproc)"
+
+variables:
+  - name: queue_depth
+    values: [1, 4, 16, 64]
+
+metrics:
+  - name: iops
+    unit: ops/s
+    collector: parse_fio_json
+    sanity_range: [100, 10000000]
+  - name: bw_mb
+    unit: MB/s
+    collector: parse_fio_json
+    sanity_range: [0.1, 100000]
+  - name: lat_us_p99
+    unit: us
+    collector: parse_fio_json
+    sanity_range: [1, 1000000]
+  - name: lat_us_mean
+    unit: us
+    collector: parse_fio_json
+    sanity_range: [1, 1000000]
+
+probes:
+  base:
+    - os
+    - cpu
+    - mem
+    - disk
+    - git
+    - env
+    - ulimit
+    - time
+  extra:
+    - nvme
+    - hugepages
+    - numa
+    - irq
+    - kernel_modules
+
+steps:
+  - name: build-and-setup
+    type: setup
+    logic: |
+      Apply patches and rebuild SPDK:
+      1. cd ${TARGET_REPO} && git checkout ${TARGET_COMMIT}
+      2. For each patch: git apply <patch_path>
+      3. ./configure --with-nvme-cuse
+      4. make -j$(nproc)
+      Then setup hugepages and bind devices:
+      5. echo 2048 > /proc/sys/vm/nr_hugepages
+      6. modprobe vfio-pci
+      7. sudo ${TARGET_REPO}/scripts/setup.sh
+      Verify: cat /proc/meminfo | grep HugePages_Free shows >= 2048
+    timeout_sec: 600
+
+  - name: baseline-measurement
+    type: baseline
+    logic: |
+      Without applying patches (revert to clean ${TARGET_COMMIT}), run the same fio workload once for each queue_depth in [1, 4, 16, 64]:
+      fio --rw=randread --bs=4k --iodepth=${VAR_QUEUE_DEPTH} --runtime=60 --time_based \
+          --output-format=json --output=${ITER_DIR}/fio.json \
+          --name=baseline --filename=/dev/nvme0n1 --ioengine=libaio --direct=1
+      Tag this iter as baseline_qd<value> in runs/.
+    timeout_sec: 400
+
+  - name: main-run
+    type: run
+    logic: |
+      Run fio randread workload with patches applied:
+      fio --rw=randread --bs=4k --iodepth=${VAR_QUEUE_DEPTH} --runtime=60 --time_based \
+          --output-format=json --output=${ITER_DIR}/fio.json \
+          --name=test --filename=/dev/nvme0n1 --ioengine=libaio --direct=1
+    timeout_sec: 120
+
+  - name: collect-metrics
+    type: collect
+    logic: |
+      Parse ${ITER_DIR}/fio.json with parse_fio_json collector.
+      Output to ${ITER_DIR}/metrics.json with keys: iops, bw_mb, lat_us_p50, lat_us_p95, lat_us_p99, lat_us_mean.
+    timeout_sec: 30
+
+  - name: cleanup
+    type: teardown
+    logic: |
+      Restore environment (only run when user explicitly invokes 90_teardown.sh):
+      1. sudo ${TARGET_REPO}/scripts/setup.sh reset
+      2. echo 0 > /proc/sys/vm/nr_hugepages
+      3. cd ${TARGET_REPO} && git reset --hard ${TARGET_COMMIT}
+    timeout_sec: 120
+
+iterations: 5
+warmup_runs: 1
+parallel: false
+
+failure_policy:
+  on_step_fail: stop_and_preserve
+  on_metric_out_of_range: stop_and_preserve
+  on_timeout: stop_and_preserve
+  auto_teardown: false

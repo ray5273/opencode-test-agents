@@ -1,0 +1,66 @@
+name: lint
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  yaml-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yamllint
+        run: pip install yamllint
+      - name: Lint YAML files
+        run: |
+          yamllint -d '{extends: relaxed, rules: {line-length: disable}}' \
+            examples/ \
+            .github/
+
+  markdown-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v15
+        with:
+          globs: |
+            README.md
+            CHANGELOG.md
+            agents/*.md
+            context/*.md
+            docs/*.md
+        continue-on-error: true  # 시스템 프롬프트 markdown은 일반 문서 룰을 항상 따르지 않음
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: '.'
+          severity: warning
+
+  plan-yaml-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python deps
+        run: pip install pyyaml
+      - name: Compile helper tools
+        run: python3 -m py_compile tools/*.py
+      - name: Validate example plan.yaml files parse correctly
+        run: |
+          for f in examples/*.yaml; do
+            echo "=== $f ==="
+            python3 -c "import yaml; yaml.safe_load(open('$f'))"
+          done
+      - name: Validate complete SPDK example
+        run: |
+          python3 tools/validate_plan.py \
+            examples/plan-spdk-example.yaml \
+            --context context/experiment-agents-context.md \
+            --skip-local-checks

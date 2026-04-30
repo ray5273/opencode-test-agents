@@ -1,0 +1,49 @@
+# plan.yaml 빈 템플릿
+# Planner는 모든 <PLACEHOLDER>를 실제 값으로 치환해야 합니다.
+# [REQUIRED] 표시 필드는 반드시 채워야 합니다.
+
+experiment:
+  id: <YYYY-MM-DD_slug_NNN>            # [REQUIRED]
+  hypothesis: <한 줄 가설>              # [REQUIRED]
+  description: <선택, 추가 설명>
+
+success_criteria: <가설 검증 기준>       # [REQUIRED]
+
+target:
+  repo_path: <레포 절대 경로 또는 null>  # [REQUIRED]
+  commit: <git sha 또는 null>           # repo_path가 null이 아니면 필수
+  patches: []                            # 적용할 패치 파일 경로 (선택)
+  build_command: <빌드 명령 또는 null>
+
+variables:                               # [REQUIRED] 변수 없으면 빈 리스트 []
+  - name: <var_name>
+    values: [<v1>, <v2>, ...]
+
+metrics:                                 # [REQUIRED] 최소 1개
+  - name: <metric_name>
+    unit: <단위>
+    collector: <context.md에 등록된 이름>      # 예: parse_fio_json
+    sanity_range: [<min>, <max>]
+
+probes:                                  # [REQUIRED]
+  base: [os, cpu, mem, disk, git, env, time]   # 권장
+  extra: []                              # 도메인별 probe
+
+steps:                                   # [REQUIRED]
+  - name: <step_name>
+    type: setup                          # setup|baseline|run|collect|teardown
+    logic: |
+      <Executor가 그대로 명령으로 옮길 수 있는 구체적 자연어>
+    timeout_sec: <초>
+
+  # ... 추가 step들
+
+iterations: 5                            # [REQUIRED]
+warmup_runs: 1
+parallel: false
+
+failure_policy:                          # [REQUIRED] 모든 값 고정
+  on_step_fail: stop_and_preserve
+  on_metric_out_of_range: stop_and_preserve
+  on_timeout: stop_and_preserve
+  auto_teardown: false
