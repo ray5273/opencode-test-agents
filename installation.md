@@ -1,6 +1,6 @@
 # Installation Guide
 
-이 문서는 Opencode에서 `experiment-orchestrator` primary agent와 hidden `experiment-planner`, `experiment-executor` subagent를 설치하는 절차입니다.
+이 문서는 Opencode에서 사용자-facing `experiment-orchestrator` primary agent와 hidden `experiment-planner`, `experiment-reviewer`, `experiment-executor` subagent를 설치하는 절차입니다.
 
 ## Prerequisites
 
@@ -60,12 +60,15 @@ Files are installed under:
 1. Start `opencode`.
 2. Press `Tab` and select `experiment-orchestrator`.
 3. Ask it to create an experiment plan.
-4. Review the ID-based draft plan in `.opencode-test-agents/plans/<id>.plan.yaml` and reply with `승인` or `OK`.
-5. Orchestrator asks planner to freeze the approved plan to `experiments/<id>/plan.yaml` and update handoff status to `APPROVED`.
-6. Orchestrator calls `experiment-executor` as a Task.
-7. Executor validates the context, plan, and handoff, then asks for a second approval before running generated scripts.
+4. Orchestrator calls `experiment-reviewer` for draft plan review and records `.opencode-test-agents/plans/<id>.review.md`.
+5. Review the ID-based draft plan in `.opencode-test-agents/plans/<id>.plan.yaml`, check reviewer status, and reply with `승인` or `OK` only if you want to proceed.
+6. Orchestrator asks planner to freeze the approved plan to `experiments/<id>/plan.yaml` and update handoff status to `APPROVED`.
+7. Orchestrator calls `experiment-executor` as a Task.
+8. Executor validates the context, plan, and handoff, captures pre-state, and generates scripts.
+9. Orchestrator calls `experiment-reviewer` for script review and records `experiments/<id>/review.md`.
+10. If script review is `PASS` or `PASS_WITH_WARNINGS`, Executor asks for a second approval before running generated scripts.
 
-If Task handoff is unavailable in your Opencode environment, keep `experiment-orchestrator` as the normal entrypoint and follow its manual fallback instructions. For troubleshooting, invoke `@experiment-executor` manually if your environment allows hidden subagent calls, or temporarily remove `hidden: true` / change `mode` for the subagent and restore it afterward. Pass both `experiments/<id>/plan.yaml` and `.opencode-test-agents/plans/<id>.md`.
+If Task handoff is unavailable in your Opencode environment, keep `experiment-orchestrator` as the normal entrypoint and follow its manual fallback instructions. For troubleshooting, invoke hidden subagents manually only if your environment allows it: `@experiment-reviewer` needs its mode plus artifact paths, and `@experiment-executor` needs both `experiments/<id>/plan.yaml` and `.opencode-test-agents/plans/<id>.md`. If hidden subagent calls are blocked, temporarily remove `hidden: true` / change `mode` for the subagent and restore it afterward.
 
 ## Plan Handoff Workspace
 
@@ -79,10 +82,11 @@ Each plan has:
 
 - `<id>.md`: Markdown handoff with status, user intent, decisions, open questions, artifact paths, next action, and resume prompt.
 - `<id>.plan.yaml`: ID-based draft plan before approval, for example `2026-04-30_spdk-zerocopy-qd-sweep_001.plan.yaml`.
+- `<id>.review.md`: draft plan reviewer artifact with `PASS`, `PASS_WITH_WARNINGS`, or `BLOCKED`.
 
 This workspace is local-only and ignored by Git. It is not installed by `install.sh`; only agents, context, examples, and tools are installed.
 
-After approval, Planner copies the draft to `experiments/<id>/plan.yaml`, writes `experiments/<id>/plan.yaml.sha256`, marks the handoff as `APPROVED`, and returns a structured handoff summary to Orchestrator. Orchestrator starts Executor with the final plan path and handoff path. Executor treats `experiments/<id>/plan.yaml` as the execution source of truth and uses the handoff only to confirm continuity.
+After approval, Planner copies the draft to `experiments/<id>/plan.yaml`, writes `experiments/<id>/plan.yaml.sha256`, marks the handoff as `APPROVED`, and returns a structured handoff summary to Orchestrator. Orchestrator starts Executor with the final plan path and handoff path. Executor treats `experiments/<id>/plan.yaml` as the execution source of truth and uses the handoff only to confirm continuity. After Executor generates scripts, Reviewer writes `experiments/<id>/review.md`; `critical`/`high` findings block the execution approval gate.
 
 ## Uninstall
 

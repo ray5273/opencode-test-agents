@@ -50,6 +50,7 @@ fi
 required_files=(
   "agents/experiment-orchestrator.md"
   "agents/experiment-planner.md"
+  "agents/experiment-reviewer.md"
   "agents/experiment-executor.md"
   "context/experiment-agents-context.md"
   "examples/plan-template.yaml"
@@ -79,6 +80,7 @@ echo
 declare -a copies
 copies+=("$SCRIPT_DIR/agents/experiment-orchestrator.md|$AGENTS_DIR/experiment-orchestrator.md")
 copies+=("$SCRIPT_DIR/agents/experiment-planner.md|$AGENTS_DIR/experiment-planner.md")
+copies+=("$SCRIPT_DIR/agents/experiment-reviewer.md|$AGENTS_DIR/experiment-reviewer.md")
 copies+=("$SCRIPT_DIR/agents/experiment-executor.md|$AGENTS_DIR/experiment-executor.md")
 copies+=("$SCRIPT_DIR/context/experiment-agents-context.md|$PKG_DIR/context.md")
 copies+=("$SCRIPT_DIR/examples/plan-template.yaml|$PKG_DIR/examples/plan-template.yaml")
@@ -175,9 +177,9 @@ echo "사용 방법:"
 echo "  1. opencode 실행"
 echo "  2. Tab 키로 'experiment-orchestrator' 선택 (primary agent로 등록됨)"
 echo "  3. 자연어로 실험 의도 전달"
-echo "  4. plan.yaml 검토 → '승인'"
-echo "  5. orchestrator가 planner freeze 후 'experiment-executor'를 호출해 검증 시작"
-echo "  6. 스크립트 검토 → '실행'"
+echo "  4. reviewer plan 검토 결과 확인 → plan.yaml 검토 → '승인'"
+echo "  5. orchestrator가 planner freeze 후 'experiment-executor'를 호출해 검증과 script 생성 시작"
+echo "  6. reviewer script 검토 결과 확인 → 스크립트 검토 → '실행'"
 echo "     (자동 호출 실패 시 orchestrator의 수동 fallback 안내를 따르세요)"
 echo
 echo "제거: ./uninstall.sh --$MODE"

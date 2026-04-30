@@ -47,6 +47,7 @@ PKG_DIR="$TARGET_BASE/experiment-agents"
 files_to_remove=(
   "$AGENTS_DIR/experiment-orchestrator.md"
   "$AGENTS_DIR/experiment-planner.md"
+  "$AGENTS_DIR/experiment-reviewer.md"
   "$AGENTS_DIR/experiment-executor.md"
   "$PKG_DIR/context.md"
   "$PKG_DIR/examples/plan-template.yaml"

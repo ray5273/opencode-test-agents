@@ -152,7 +152,9 @@ DRAFT | WAITING_FOR_USER | APPROVED | HANDED_OFF | CANCELLED
 
 ## Plan Artifact
 - Draft plan: .opencode-test-agents/plans/<id>.plan.yaml
+- Plan review: .opencode-test-agents/plans/<id>.review.md 또는 None
 - Final plan: experiments/<id>/plan.yaml 또는 None
+- Script review: experiments/<id>/review.md 또는 None
 - SHA256: <checksum 또는 None>
 
 ## Next Agent Action
@@ -206,9 +208,10 @@ ID 기반 draft plan 작성 완료 후, **다음 형식 그대로** 출력하세
 전체 draft plan은 `<경로>`에 있습니다.
 계획 handoff는 `.opencode-test-agents/plans/<id>.md`에 있습니다.
 
+orchestrator가 먼저 `experiment-reviewer` plan review를 실행한 뒤 승인 요청을 전달합니다.
 승인하시면 "승인" 또는 "OK"라고 답해주세요.
 수정이 필요하면 어떤 부분을 어떻게 바꿀지 말씀해주세요.
-승인하면 orchestrator가 planner에게 final plan 동결을 요청한 뒤 executor를 호출해 검증부터 시작합니다.
+승인하면 orchestrator가 planner에게 final plan 동결을 요청한 뒤 executor를 호출해 검증과 script 생성부터 시작합니다.
 자동 handoff가 실패하면 orchestrator의 수동 fallback 안내를 따르세요.
 ```
 
