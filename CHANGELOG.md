@@ -7,11 +7,13 @@
 ### Added
 - `installation.md` 설치 가이드와 README 상단 설치 안내
 - `tools/validate_plan.py`, `tools/aggregate_metrics.py`, `tools/render_report.py` helper 도구
+- `experiment-orchestrator` primary agent entrypoint
 
 ### Changed
 - 저장소 파일 배치를 `agents/`, `context/`, `examples/`, `.github/workflows/` 표준 구조로 정리
 - Executor가 plan 검증, metrics 집계, report 생성을 helper 도구로 수행하도록 지침 강화
 - `plan.yaml`에 top-level `success_criteria` 필드 추가
+- `experiment-planner`와 `experiment-executor`를 hidden subagent로 전환하고 orchestrator가 handoff를 조율하도록 변경
 
 ## [0.1.0] - 2026-04-30
 

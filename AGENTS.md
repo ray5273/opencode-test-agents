@@ -2,9 +2,10 @@
 
 ## Project Structure & Module Organization
 
-This repository packages two Opencode primary agents for experiment planning and execution:
+This repository packages one Opencode primary orchestrator and two hidden subagents for experiment planning and execution:
 
-- `agents/experiment-planner.md` and `agents/experiment-executor.md` define the two agents.
+- `agents/experiment-orchestrator.md` defines the user-facing primary agent.
+- `agents/experiment-planner.md` and `agents/experiment-executor.md` define the hidden subagents.
 - `context/experiment-agents-context.md` is the shared source of truth for plan schema, probes, collectors, and report structure.
 - `examples/plan-template.yaml` and `examples/plan-spdk-example.yaml` provide reusable plan examples.
 - `tools/*.py` contains deterministic helpers for plan validation, metric aggregation, and report rendering.
