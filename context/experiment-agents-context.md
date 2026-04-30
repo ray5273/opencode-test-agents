@@ -1,8 +1,72 @@
 # Experiment Agents — 공유 컨텍스트
 
-이 문서는 `experiment-planner`와 `experiment-executor` 에이전트의 공통 계약입니다. **두 에이전트는 매 세션 시작 시 이 문서를 먼저 읽어야 합니다.** 추측은 금지이며, 모든 정의는 이 문서가 진실의 원천입니다.
+이 문서는 `experiment-orchestrator`, `experiment-planner`, `experiment-executor` 에이전트의 공통 계약입니다. **세 에이전트는 매 세션 시작 시 이 문서를 먼저 읽어야 합니다.** 추측은 금지이며, 모든 정의는 이 문서가 진실의 원천입니다.
+
+정상 workflow의 유일한 primary entrypoint는 `experiment-orchestrator`입니다. `experiment-planner`와 `experiment-executor`는 hidden subagent이며, orchestrator가 Task로만 호출합니다. 사용자는 일반적으로 planner/executor를 Tab으로 직접 선택하지 않습니다.
 
 ## 1. 디렉토리 구조 (절대 약속)
+
+계획 재개 상태와 실행 결과는 분리합니다.
+
+- `.opencode-test-agents/plans/`는 Planner가 쓰는 로컬 계획 작업공간입니다. draft plan과 Markdown handoff를 보관하며 Git에 커밋하지 않습니다.
+- `experiments/`는 사용자 승인 후 동결된 plan과 Executor 실행 결과의 source of truth입니다.
+
+### 1.1 계획 작업공간
+
+```
+.opencode-test-agents/plans/
+├── <id>.md          # Planner handoff, 재개와 자동/수동 executor handoff 상태
+└── <id>.plan.yaml   # 승인 전 ID 기반 draft plan
+```
+
+승인 전 draft plan 파일명은 `YYYY-MM-DD_<slug>_<seq>.plan.yaml` 형식이어야 합니다. 예: `2026-04-30_spdk-zerocopy-qd-sweep_001.plan.yaml`. 단순 `plan.yaml` 이름은 승인 후 `experiments/<id>/plan.yaml`에 동결된 실행 계약에만 사용합니다.
+
+handoff Markdown 형식:
+
+```markdown
+# Plan Handoff: <id>
+
+## Status
+DRAFT | WAITING_FOR_USER | APPROVED | HANDED_OFF | CANCELLED
+
+## User Intent
+원 요청과 가설 요약
+
+## Decisions
+확정된 변수, 메트릭, 반복 횟수, baseline 여부, 성공 기준
+
+## Open Questions
+아직 사용자 확인이 필요한 항목. 없으면 None
+
+## Plan Artifact
+- Draft plan: .opencode-test-agents/plans/<id>.plan.yaml
+- Final plan: experiments/<id>/plan.yaml 또는 None
+- SHA256: <checksum 또는 None>
+
+## Next Agent Action
+planner/executor/사용자가 다음에 해야 할 한 줄 지시
+
+## Resume Prompt
+새 세션에서 그대로 붙여 넣을 재개 프롬프트
+```
+
+허용 status:
+
+| Status | 의미 |
+|---|---|
+| `DRAFT` | draft plan이 있지만 아직 승인 요청 전이거나 수정 중 |
+| `WAITING_FOR_USER` | planner가 사용자 답변을 기다림 |
+| `APPROVED` | final `experiments/<id>/plan.yaml`이 생성되고 checksum이 기록됨 |
+| `HANDED_OFF` | legacy/manual flow에서 executor handoff가 이미 확인됨 |
+| `CANCELLED` | 사용자가 계획을 중단함 |
+
+Executor는 handoff가 있으면 `APPROVED` 또는 `HANDED_OFF`만 실행 대상으로 인정합니다. 다른 status는 실행 대상으로 거부하고 스크립트 생성 전에 중단합니다.
+
+승인 후 기본 흐름은 orchestrator가 planner에게 final plan freeze를 요청하고, planner가 handoff status를 `APPROVED`로 갱신한 structured handoff summary를 반환한 뒤, orchestrator가 `experiment-executor` Task를 호출하는 것입니다. 이 handoff는 executor가 context와 plan을 읽고 검증을 시작하는 것까지만 허용합니다. 실제 실험 스크립트 실행은 executor의 별도 실행 직전 승인 없이는 시작하지 않습니다.
+
+Task 호출이 Opencode 환경에서 지원되지 않거나 실패하면 수동 fallback을 사용합니다. 정상 사용자는 Tab에서 `experiment-orchestrator`만 선택합니다. troubleshooting이 필요하면 숨김 subagent를 수동 호출할 수 있는 환경에서 `@experiment-planner` 또는 `@experiment-executor`를 직접 호출합니다. 환경이 hidden subagent 수동 호출을 막으면 임시로 해당 agent 파일의 `hidden: true`를 제거하거나 `mode: primary`로 바꾼 뒤, 작업이 끝나면 되돌립니다. executor fallback에는 반드시 `experiments/<id>/plan.yaml`과 `.opencode-test-agents/plans/<id>.md`를 함께 전달합니다.
+
+### 1.2 실행 결과 디렉토리
 
 ```
 experiments/<id>/
