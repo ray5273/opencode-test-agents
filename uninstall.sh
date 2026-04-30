@@ -45,6 +45,7 @@ AGENTS_DIR="$TARGET_BASE/agents"
 PKG_DIR="$TARGET_BASE/experiment-agents"
 
 files_to_remove=(
+  "$AGENTS_DIR/experiment-orchestrator.md"
   "$AGENTS_DIR/experiment-planner.md"
   "$AGENTS_DIR/experiment-executor.md"
   "$PKG_DIR/context.md"
@@ -63,7 +64,13 @@ echo
 if [[ "$RESTORE" == "1" ]]; then
   echo "백업(.bak.*)을 찾아 복원합니다..."
   for f in "${files_to_remove[@]}"; do
-    latest_bak="$(ls -t "$f".bak.* 2>/dev/null | head -1 || true)"
+    latest_bak="$(
+      find "$(dirname "$f")" -maxdepth 1 -type f -name "$(basename "$f").bak.*" -printf '%T@ %p\n' 2>/dev/null \
+        | sort -nr \
+        | head -n 1 \
+        | cut -d ' ' -f 2- \
+        || true
+    )"
     if [[ -n "$latest_bak" ]]; then
       if [[ "$DRY_RUN" == "1" ]]; then
         echo "  [dry-run] 복원 예정: $latest_bak → $f"
@@ -78,13 +85,15 @@ fi
 
 # 일반 제거 모드
 for f in "${files_to_remove[@]}"; do
-  if [[ -f "$f" ]]; then
-    if [[ "$DRY_RUN" == "1" ]]; then
+  if [[ "$DRY_RUN" == "1" ]]; then
+    if [[ -f "$f" ]]; then
       echo "  [dry-run] 제거 예정: $f"
     else
+      echo "  [dry-run] 없음: $f"
+    fi
+  elif [[ -f "$f" ]]; then
       rm "$f"
       echo "  제거: $f"
-    fi
   fi
 done
 
@@ -96,5 +105,9 @@ if [[ "$DRY_RUN" != "1" ]]; then
 fi
 
 echo
-echo "제거 완료. 백업 파일(.bak.*)은 그대로 보존됩니다."
-echo "백업도 정리하려면: find $TARGET_BASE -name '*.bak.*' -delete"
+if [[ "$DRY_RUN" == "1" ]]; then
+  echo "dry-run 완료. 실제 제거는 하지 않았습니다."
+else
+  echo "제거 완료. 백업 파일(.bak.*)은 그대로 보존됩니다."
+  echo "백업도 정리하려면: find $TARGET_BASE -name '*.bak.*' -delete"
+fi

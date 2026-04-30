@@ -48,6 +48,7 @@ fi
 
 # 소스 파일 확인
 required_files=(
+  "agents/experiment-orchestrator.md"
   "agents/experiment-planner.md"
   "agents/experiment-executor.md"
   "context/experiment-agents-context.md"
@@ -76,6 +77,7 @@ echo
 
 # 설치 매핑
 declare -a copies
+copies+=("$SCRIPT_DIR/agents/experiment-orchestrator.md|$AGENTS_DIR/experiment-orchestrator.md")
 copies+=("$SCRIPT_DIR/agents/experiment-planner.md|$AGENTS_DIR/experiment-planner.md")
 copies+=("$SCRIPT_DIR/agents/experiment-executor.md|$AGENTS_DIR/experiment-executor.md")
 copies+=("$SCRIPT_DIR/context/experiment-agents-context.md|$PKG_DIR/context.md")
@@ -171,10 +173,11 @@ fi
 echo
 echo "사용 방법:"
 echo "  1. opencode 실행"
-echo "  2. Tab 키로 'experiment-planner' 선택 (primary agent로 등록됨)"
+echo "  2. Tab 키로 'experiment-orchestrator' 선택 (primary agent로 등록됨)"
 echo "  3. 자연어로 실험 의도 전달"
 echo "  4. plan.yaml 검토 → '승인'"
-echo "  5. Tab으로 'experiment-executor'로 전환 → plan.yaml 경로 전달"
+echo "  5. orchestrator가 planner freeze 후 'experiment-executor'를 호출해 검증 시작"
 echo "  6. 스크립트 검토 → '실행'"
+echo "     (자동 호출 실패 시 orchestrator의 수동 fallback 안내를 따르세요)"
 echo
 echo "제거: ./uninstall.sh --$MODE"
